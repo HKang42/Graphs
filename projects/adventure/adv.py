@@ -13,8 +13,8 @@ world = World()
 # You may uncomment the smaller graphs for development and testing purposes.
 # map_file = "maps/test_line.txt"
 # map_file = "maps/test_cross.txt"
-#map_file = "maps/test_loop.txt"
-#map_file = "maps/test_loop_fork.txt"
+# map_file = "maps/test_loop.txt"
+# map_file = "maps/test_loop_fork.txt"
 map_file = "maps/main_maze.txt"
 
 # Loads the map into a dictionary
@@ -212,7 +212,7 @@ def traversal(player, graph, traversal_path, total_rooms, printing = False):
             raise ValueError("Please disable printing")
 
     while len(graph) < total_rooms:
-        # If dir is None, then we have no unexplored rooms from out current position.
+        # If dir is None, then we have no unexplored rooms from our current position.
         # We need to backtrack until we find an unexplored room.
         if dir == None:
 
@@ -222,6 +222,11 @@ def traversal(player, graph, traversal_path, total_rooms, printing = False):
                 player.travel(direction)
                 traversal_path.append(direction)
             
+            if printing == True:
+                print('\nCurrent Room:', player.current_room.id)
+                print('Direction:', dir)
+                print(graph)
+
             dir = path_to_unexplored[-1]
 
         if printing == True:
