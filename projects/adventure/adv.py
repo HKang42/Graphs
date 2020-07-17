@@ -2,6 +2,7 @@ from room import Room
 from player import Player
 from world import World
 
+import pprint
 import random
 from ast import literal_eval
 
@@ -12,7 +13,7 @@ world = World()
 # You may uncomment the smaller graphs for development and testing purposes.
 # map_file = "maps/test_line.txt"
 # map_file = "maps/test_cross.txt"
-# map_file = "maps/test_loop.txt"
+#map_file = "maps/test_loop.txt"
 #map_file = "maps/test_loop_fork.txt"
 map_file = "maps/main_maze.txt"
 
@@ -102,8 +103,7 @@ def room_adder(graph, room_object, direction, ID):
 
     return connections
 
-
-def move(player, graph, direction, counter = None):
+def move(player, graph, direction):
     """
     Moves the player travel in the given direction
     
@@ -121,15 +121,6 @@ def move(player, graph, direction, counter = None):
 
     # Link our new room to the previous one
     new_exits = room_adder(graph, new_room, flip(direction), prev_room.id)
-
-
-    missing = [10, 38, 188]
-    if prev_room.id in missing:
-        print("FOUND MISSING")
-        print("prev", counter, prev_room.id)
-    if new_room.id in missing:
-        print("FOUND MISSING")
-        print("new", counter, new_room.id)
 
     return new_exits
 
@@ -152,6 +143,52 @@ def direction_chooser(exits, reverse = False):
     return None
 
 
+def unknown_room_bfs(graph, start_room):
+    """
+    Given our graph of nodes and a starting room ID,
+    search for the closest room with an un-explored connection (This will not always be an unexplored room)
+    
+    returns list of directions to the closest unexplored room
+    """
+    visited = {}
+
+    queue = []
+    
+    # For our starting room, there is no path
+    visited = set()
+    visited.add(start_room)
+
+    starting_exits = graph[start_room]
+    for dir in starting_exits:
+        next_room = starting_exits[dir]
+        queue.append( [next_room, [dir] ] )
+
+    while len(queue) > 0:
+
+        room, path = queue.pop(0)
+
+        visited.add(room)
+
+        exits = graph[room] 
+
+        for dir in exits:
+            
+            next_room = exits[dir]
+            next_path = path.copy()
+            next_path.append(dir)
+
+            # If we have already visited the room, then skip
+            if next_room in visited:
+                continue
+            
+            # If the next room is unexplored, then we return the path
+            if next_room == '?':
+                return next_path
+            
+            # Else, we add that room and the path to that room to the queue
+            else:
+                queue.append( [next_room, next_path])
+
 def traversal(player, graph, traversal_path, total_rooms, printing = False):
     
     starting_exits = player.current_room.get_exits()
@@ -159,7 +196,10 @@ def traversal(player, graph, traversal_path, total_rooms, printing = False):
     visited = set()
     visited.add(player.current_room.id)
 
-    visit_counter = 1
+    print("Map file:\t\t", map_file)
+    print("Starting Room:\t\t", player.current_room.id)
+    print("Starting Exits:\t\t", starting_exits)
+    print("Starting Direction:\t", dir, '\n')
 
     if printing == True and total_rooms >= 10:
         p_check = input("Are you sure you want to print traversal process? (y/n) ")
@@ -168,78 +208,49 @@ def traversal(player, graph, traversal_path, total_rooms, printing = False):
         else:
             raise ValueError("Please disable printing")
 
-    while len(visited) <= total_rooms:
+    while len(graph) < total_rooms:
+        # If dir is None, then we have no unexplored rooms from out current position.
+        # We need to backtrack until we find an unexplored room.
+        if dir == None:
+
+            path_to_unexplored = unknown_room_bfs(graph, player.current_room.id)
+
+            for direction in path_to_unexplored[:-1]:
+                player.travel(direction)
+                traversal_path.append(direction)
+            
+            dir = path_to_unexplored[-1]
+
         if printing == True:
             print('\nCurrent Room:', player.current_room.id)
             print('Direction:', dir)
             print(graph)
         
-        exits = move(player, graph, dir, visit_counter)
+        exits = move(player, graph, dir)
         traversal_path.append(dir)
-        visit_counter += 1
+        
         visited.add(player.current_room.id)
 
-        # if visit_counter >= total_rooms:
-        #     print('visit_counter:', visit_counter)
-        #     print('total rooms:', total_rooms)
-        #     print("EXIT 1")
-        #     return visited
-
         dir = direction_chooser(exits)
-        
-        # If dir is None, then we have no unexplored rooms from out current position.
-        # We need to backtrack until we find an unexplored room.
-        if dir == None:
-            # Backtrack by looping with a negative interval (remember to subtract 1 from the start and end range)
-            # Get the last direction, flip it, and move that way.
-            # Check to see if there is an unexplored room.
-            # If yes, dir is no longer None and we break
-            # Else, we backtrack again
-            q = traversal_path.copy()
-            for i in range(len(traversal_path) - 1, -1, -1):
-                last_move = q[i]
-                back_track = flip(last_move)
 
-                exits = move(player, graph, back_track, visit_counter)
-                dir = direction_chooser(exits, reverse=True)
-                
-                if printing == True:
-                    print('\nCurrent Room:', player.current_room.id)
-                    print('Direction:', dir)
-                    print(graph)
-
-                traversal_path.append(back_track)
-
-                # Stop when we find an unexplored room
-                if dir is not None:
-                    #print("HIIIIIIIIIIIII")
-                    break
-                
-                # If our backtracking loop cannot find an unexplored room, then return
-                if i == 0:
-                    print("EXIT 2")
-                    print("RIP")
-                    return visited, visit_counter 
-
-    print("EXIT 3")
-    return visited, visit_counter
+    return visited
 
     # print("EXIT 3")
     # raise ValueError("How did you get here?")
 
 
 print('\n')
-v, v_counter = traversal(player, graph, traversal_path, len(room_graph), printing = False)
+v = traversal(player, graph, traversal_path, len(room_graph), printing = False)
 
-#print('\nTraversal Path')
-#print(traversal_path, '\n')
-print('\nTraversal Path Length:', len(traversal_path))
+# print('\nTraversal Path')
+# print(traversal_path, '\n')
+print('\nTraversal Path Length:   ', len(traversal_path))
 
 print("Expected number of rooms:", len(room_graph))
-print("Len Visited_rooms:", len(v))
-print("Visit Counter:", v_counter,'\n'*2)
+print("Number of visited rooms: ", len(v))
 
-print('TRAVERSAL TEST')
+
+print('\n\n### TRAVERSAL TEST ###')
 # TRAVERSAL TEST
 visited_rooms = set()
 visited_rooms_ID = set()
@@ -257,26 +268,16 @@ else:
     print("TESTS FAILED: INCOMPLETE TRAVERSAL")
     print(f"{len(room_graph) - len(visited_rooms)} unvisited rooms")
 
-'''
-# For checking missing rooms
-for i in range(0, len(room_graph)):
-    if i not in visited_rooms_ID:
-        print(i)
-'''
-
+# Print any missing rooms
 miss = []
 for room in room_graph:
-    #print(room)
     if room not in v:
         miss.append(room)
-
 if len(miss) > 0:
     m = miss
 else:
     m = None
-print('\nMissing Rooms:', m)
-print('\n')
-
+print('\nMissing Rooms:', m, '\n')
 
 
 #######
