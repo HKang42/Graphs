@@ -13,7 +13,7 @@ world = World()
 # map_file = "maps/test_line.txt"
 # map_file = "maps/test_cross.txt"
 # map_file = "maps/test_loop.txt"
-# map_file = "maps/test_loop_fork.txt"
+map_file = "maps/test_loop_fork.txt"
 # map_file = "maps/main_maze.txt"
 
 # Loads the map into a dictionary
@@ -131,11 +131,20 @@ def move(player, graph, direction):
     return new_exits
 
 
-def direction_chooser(exits):
-    for direction in exits:
-        if exits[direction] == '?':
-            return direction
+def direction_chooser(exits, reverse = False):
+    if reverse == False:
+        for direction in exits:
+            if exits[direction] == '?':
+                return direction
     
+    # The above code causes our algorithm to prioritize directions in 
+    # the order North, South, West, East
+    elif reverse == True:
+        dir = ['n', 's', 'w', 'e']
+        for i in range(len(dir)-1, -1, -1):
+            if dir[i] in exits:
+                if exits[dir[i]] == '?':
+                    return dir[i]
     #print(":(")
     return None
 
@@ -158,6 +167,7 @@ def traversal(player, graph, traversal_path, total_rooms, printing = False):
         visit_counter += 1
 
         if visit_counter >= total_rooms:
+            print("Visit Counter", visit_counter)
             return
 
         dir = direction_chooser(exits)
@@ -173,27 +183,34 @@ def traversal(player, graph, traversal_path, total_rooms, printing = False):
             for i in range(len(traversal_path) - 1, -1, -1):
                 last_move = traversal_path[i]
                 back_track = flip(last_move)
+
                 exits = move(player, graph, back_track)
+                dir = direction_chooser(exits, reverse=True)
+                
                 traversal_path.append(back_track)
-                dir = direction_chooser(exits)
 
                 # Stop when we find an unexplored room
                 if dir is not None:
+                    #print("HIIIIIIIIIIIII")
                     break
                 
                 # If our backtracking loop cannot find an unexplored room, then return
                 if i == 0:
+                    print("RIP")
                     return 
 
     print('\nCurrent Room:', player.current_room.id)
     print('Direction:', dir)
     print(graph)
 
+print('\n')
 traversal(player, graph, traversal_path, len(room_graph))
 
 print('\nTraversal Path')
 print(traversal_path, '\n')
+print('\nTraversal Path Length:', len(traversal_path))
 
+print("Expected number of rooms:", len(room_graph))
 
 #print('\n\n')
 #print(graph)
